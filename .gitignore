@@ -40,3 +40,5 @@ CMakeUserPresets.json
 __pycache__
 .py-build-cmake_cache
 *.egg-info
+venv/
+samples/python/whisper_speech_recognition/whisper-small
