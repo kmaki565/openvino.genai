@@ -3,8 +3,10 @@
 
 #include "audio_utils.hpp"
 #include "openvino/genai/whisper_pipeline.hpp"
+#define NOMINMAX
+#include <Windows.h>
 
-static std::string GetCurrentTime() {
+static std::string FormatCurrentTime() {
     auto now = std::chrono::system_clock::now();
     auto in_time_t = std::chrono::system_clock::to_time_t(now);
     std::ostringstream ss;
@@ -47,11 +49,14 @@ int main(int argc, char* argv[]) try {
         throw std::runtime_error(std::string{"Usage: "} + argv[0] + " <MODEL_DIR> \"<WAV_FILE_PATH>\"");
     }
 
+    // Set console code page to UTF-8 so console known how to interpret string data
+    SetConsoleOutputCP(CP_UTF8);
+
     std::filesystem::path models_path = argv[1];
     std::string wav_file_path = argv[2];
     std::string device = "NPU";  // GPU, CPU can be used as well
 
-    std::cout << GetCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
+    std::cout << FormatCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
               << "...\n";
     ov::genai::WhisperPipeline pipeline(models_path, device);
 
@@ -64,10 +69,10 @@ int main(int argc, char* argv[]) try {
     config.task = "transcribe";
     config.return_timestamps = true;
 
-    std::cout << GetCurrentTime() << " Reading audio file " << wav_file_path << "...\n";
+    std::cout << FormatCurrentTime() << " Reading audio file " << wav_file_path << "...\n";
     ov::genai::RawSpeechInput raw_speech = utils::audio::read_wav(wav_file_path);
 
-    std::cout << GetCurrentTime() << " Generating text from speech...\n";
+    std::cout << FormatCurrentTime() << " Generating text from speech...\n";
 
     const int windowInSec = 30;
     const int sampleRate = 16000;
@@ -98,7 +103,7 @@ int main(int argc, char* argv[]) try {
         elapsedTime += endOfChunksInSec;
         // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
-    std::cout << GetCurrentTime() << " Transcribing done.\n";
+    std::cout << FormatCurrentTime() << " Transcribing done.\n";
 
 } catch (const std::exception& error) {
     try {
