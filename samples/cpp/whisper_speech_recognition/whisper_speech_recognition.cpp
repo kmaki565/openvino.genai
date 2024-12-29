@@ -83,6 +83,24 @@ int main(int argc, char* argv[]) try {
         ov::genai::RawSpeechInput currentWindow = SliceRawSpeech(raw_speech, elapsedTime * sampleRate, endOfWindow);
         auto result = pipeline.generate(currentWindow, config);
         float endOfChunksInSec = 0.0f;
+
+        // If all chunks have the same text, something wrong happened.
+        // TODO: Root cause analysis & fix
+        bool isAbnormalResult = false;
+        int abnormalThreshold = 6;
+        if (result.chunks->size() > abnormalThreshold) {
+            bool isOk = false;
+            for (size_t i = 0; i < abnormalThreshold; i++) {
+                if (result.chunks->at(0).text != result.chunks->at(i).text) {
+                    isOk = true;
+                    break;
+                }
+            }
+            if (!isOk) {
+				isAbnormalResult = true;
+			}
+        }
+
         for (auto& chunk : *result.chunks) {
             if (chunk.end_ts < 0) {
                 // Workaround if audio is cut off in the middle of a word: Wind up the time a little. 
@@ -96,8 +114,13 @@ int main(int argc, char* argv[]) try {
             }
             ltrim(chunk.text);
             std::cout << chunk.text << "\n\n";
+            if (isAbnormalResult) {
+                // Ignore the rest of the chunks if they all have the same text.
+				break;
+			}
         }
-        if (endOfWindow == raw_speech.size()) {
+
+        if (!isAbnormalResult && endOfWindow == raw_speech.size()) {
             break;
         }
         elapsedTime += endOfChunksInSec;
