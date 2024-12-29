@@ -23,9 +23,8 @@ std::string FormatTime(float seconds) {
     if (hours > 0) {
         ss << std::setfill('0') << std::setw(2) << hours << ":";
     }
-    ss << std::setfill('0') << std::setw(2) << minutes << ":"
-        << std::setfill('0') << std::setw(2) << secs << "."
-        << std::setfill('0') << std::setw(3) << millis;
+    ss << std::setfill('0') << std::setw(2) << minutes << ":" << std::setfill('0') << std::setw(2) << secs << "."
+       << std::setfill('0') << std::setw(3) << millis;
     return ss.str();
 }
 
@@ -39,23 +38,24 @@ std::vector<float> SliceRawSpeech(const std::vector<float>& raw_speech, size_t s
 // trim from start (in place)
 inline void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-        }));
+                return !std::isspace(ch);
+            }));
 }
 
 int main(int argc, char* argv[]) try {
     if (3 > argc) {
         throw std::runtime_error(std::string{"Usage: "} + argv[0] + " <MODEL_DIR> \"<WAV_FILE_PATH>\"");
     }
-    
+
     std::filesystem::path models_path = argv[1];
     std::string wav_file_path = argv[2];
-    std::string device = "NPU";  // GPU, NPU can be used as well
+    std::string device = "NPU";  // GPU, CPU can be used as well
 
-    std::cout << GetCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path << "...\n";
+    std::cout << GetCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
+              << "...\n";
     ov::genai::WhisperPipeline pipeline(models_path, device);
 
-   // ov::genai::WhisperGenerationConfig config(models_path / "generation_config.json");
+    // ov::genai::WhisperGenerationConfig config(models_path / "generation_config.json");
     ov::genai::WhisperGenerationConfig config = pipeline.get_generation_config();
     config.max_new_tokens = 100;  // increase this based on your speech length
     // 'task' and 'language' parameters are supported for multilingual models only
@@ -69,20 +69,34 @@ int main(int argc, char* argv[]) try {
 
     std::cout << GetCurrentTime() << " Generating text from speech...\n";
 
-    int chunk_length_sec = 30;
-    int chunk_length = chunk_length_sec * 16000;  // 16000 is the common sample rate
-    float elapsed_time = 0.0f;
+    const int windowInSec = 30;
+    const int sampleRate = 16000;
+    float elapsedTime = 0.0f;
 
-    for (size_t i = 0; i < raw_speech.size(); i += chunk_length)
-    {
-        ov::genai::RawSpeechInput current_chunk = SliceRawSpeech(raw_speech, i, std::min(i + chunk_length, raw_speech.size()));
-        auto result = pipeline.generate(current_chunk, config);
+    while (true) {
+        size_t endOfWindow = std::min(static_cast<size_t>(elapsedTime + windowInSec) * sampleRate, raw_speech.size());
+        ov::genai::RawSpeechInput currentWindow = SliceRawSpeech(raw_speech, elapsedTime * sampleRate, endOfWindow);
+        auto result = pipeline.generate(currentWindow, config);
+        float endOfChunksInSec = 0.0f;
         for (auto& chunk : *result.chunks) {
-            std::cout << FormatTime(elapsed_time + chunk.start_ts) << " --> " << FormatTime(elapsed_time + chunk.end_ts) << "\n";
+            if (chunk.end_ts < 0) {
+                // Workaround if audio is cut off in the middle of a word: Wind up the time a little. 
+                endOfChunksInSec += 0.2f;
+                break;
+			}
+            std::cout << FormatTime(elapsedTime + chunk.start_ts) << " --> " << FormatTime(elapsedTime + chunk.end_ts)
+                      << "\n";
+            if (chunk.end_ts > endOfChunksInSec) {
+                endOfChunksInSec = chunk.end_ts;
+            }
             ltrim(chunk.text);
             std::cout << chunk.text << "\n\n";
         }
-        elapsed_time += chunk_length_sec;
+        if (endOfWindow == raw_speech.size()) {
+            break;
+        }
+        elapsedTime += endOfChunksInSec;
+        // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
     std::cout << GetCurrentTime() << " Transcribing done.\n";
 
