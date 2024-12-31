@@ -14,7 +14,7 @@ static std::string FormatCurrentTime() {
     return ss.str();
 }
 
-std::string FormatTime(float seconds) {
+static std::string FormatTime(float seconds) {
     int total_seconds = static_cast<int>(seconds);
     int hours = total_seconds / 3600;
     int minutes = (total_seconds % 3600) / 60;
@@ -30,7 +30,7 @@ std::string FormatTime(float seconds) {
     return ss.str();
 }
 
-std::vector<float> SliceRawSpeech(const std::vector<float>& raw_speech, size_t start, size_t end) {
+static std::vector<float> SliceRawSpeech(const std::vector<float>& raw_speech, size_t start, size_t end) {
     if (start >= end || end > raw_speech.size()) {
         throw std::out_of_range("Invalid slice indices");
     }
@@ -38,7 +38,7 @@ std::vector<float> SliceRawSpeech(const std::vector<float>& raw_speech, size_t s
 }
 
 // trim from start (in place)
-inline void ltrim(std::string& s) {
+inline static void ltrim(std::string& s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
                 return !std::isspace(ch);
             }));
@@ -127,6 +127,7 @@ int main(int argc, char* argv[]) try {
         // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
+    return EXIT_SUCCESS;
 
 } catch (const std::exception& error) {
     try {
