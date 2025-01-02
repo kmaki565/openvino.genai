@@ -56,6 +56,7 @@ int main(int argc, char* argv[]) try {
     std::string wav_file_path = argv[2];
     std::string device = "NPU";  // GPU, CPU can be used as well
 
+    auto startTime = std::chrono::high_resolution_clock::now();
     std::cout << FormatCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
               << "...\n";
     ov::genai::WhisperPipeline pipeline(models_path, device);
@@ -131,6 +132,9 @@ int main(int argc, char* argv[]) try {
     pipeline.~WhisperPipeline();
 
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
+    auto endTime = std::chrono::high_resolution_clock::now();
+    std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count()
+			  << " seconds\n";
     return EXIT_SUCCESS;
 
 } catch (const std::exception& error) {
