@@ -126,6 +126,10 @@ int main(int argc, char* argv[]) try {
         elapsedTime += endOfChunksInSec;
         // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
+
+    // Force cleaning up the pipeline before exiting the program to prevent console from turning red.
+    pipeline.~WhisperPipeline();
+
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
     return EXIT_SUCCESS;
 
