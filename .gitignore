@@ -42,3 +42,5 @@ __pycache__
 *.egg-info
 venv/
 samples/python/whisper_speech_recognition/whisper-small
+runtime/bin
+runtime/lib
