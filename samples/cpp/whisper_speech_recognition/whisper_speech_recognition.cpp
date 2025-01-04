@@ -61,6 +61,7 @@ int main(int argc, char* argv[]) try {
               << "...\n";
     ov::AnyMap pipeline_config = {{"NPUW_CACHE_DIR", ".npucache"}};
     ov::genai::WhisperPipeline pipeline(models_path, device, pipeline_config);
+    auto pipelineInitTime = std::chrono::high_resolution_clock::now();
 
     // ov::genai::WhisperGenerationConfig config(models_path / "generation_config.json");
     ov::genai::WhisperGenerationConfig config = pipeline.get_generation_config();
@@ -73,6 +74,7 @@ int main(int argc, char* argv[]) try {
 
     std::cout << FormatCurrentTime() << " Reading audio file " << wav_file_path << "...\n";
     ov::genai::RawSpeechInput raw_speech = utils::audio::read_wav(wav_file_path);
+    int speech_duration_sec = raw_speech.size() / 16000;
 
     std::cout << FormatCurrentTime() << " Generating text from speech...\n";
 
@@ -130,8 +132,14 @@ int main(int argc, char* argv[]) try {
     }
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
     auto endTime = std::chrono::high_resolution_clock::now();
-    std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count()
-			  << " seconds\n";
+    std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count() << " seconds "
+              << "(including pipeline init time: " << std::chrono::duration_cast<std::chrono::seconds>(pipelineInitTime - startTime).count() << "s)\n";
+
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "Transcription speed: "
+              << speech_duration_sec * 1000.0 /
+                     std::chrono::duration_cast<std::chrono::milliseconds>(endTime - pipelineInitTime).count()
+              << " audio seconds/s\n";
     return EXIT_SUCCESS;
 
 } catch (const std::exception& error) {
