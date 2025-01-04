@@ -59,7 +59,8 @@ int main(int argc, char* argv[]) try {
     auto startTime = std::chrono::high_resolution_clock::now();
     std::cout << FormatCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
               << "...\n";
-    ov::genai::WhisperPipeline pipeline(models_path, device);
+    ov::AnyMap pipeline_config = {{"NPUW_CACHE_DIR", ".npucache"}};
+    ov::genai::WhisperPipeline pipeline(models_path, device, pipeline_config);
 
     // ov::genai::WhisperGenerationConfig config(models_path / "generation_config.json");
     ov::genai::WhisperGenerationConfig config = pipeline.get_generation_config();
