@@ -127,10 +127,6 @@ int main(int argc, char* argv[]) try {
         elapsedTime += endOfChunksInSec;
         // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
-
-    // Force cleaning up the pipeline before exiting the program to prevent console from turning red.
-    pipeline.~WhisperPipeline();
-
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
     auto endTime = std::chrono::high_resolution_clock::now();
     std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count()
