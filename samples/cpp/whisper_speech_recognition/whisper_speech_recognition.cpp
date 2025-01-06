@@ -45,21 +45,24 @@ inline static void ltrim(std::string& s) {
 }
 
 int main(int argc, char* argv[]) try {
-    if (3 > argc) {
-        throw std::runtime_error(std::string{"Usage: "} + argv[0] + " <MODEL_DIR> \"<WAV_FILE_PATH>\"");
+    if (4 > argc) {
+        throw std::runtime_error(std::string{"Usage: "} + argv[0] + " <CPU/GPU/NPU> <MODEL_DIR> \"<WAV_FILE_PATH>\"");
     }
 
     // Set console code page to UTF-8 so console known how to interpret string data
     SetConsoleOutputCP(CP_UTF8);
-
-    std::filesystem::path models_path = argv[1];
-    std::string wav_file_path = argv[2];
-    std::string device = "NPU";  // GPU, CPU can be used as well
+    
+    std::string device = argv[1];  // GPU, CPU can be used as well
+    std::filesystem::path models_path = argv[2];
+    std::string wav_file_path = argv[3];
 
     auto startTime = std::chrono::high_resolution_clock::now();
     std::cout << FormatCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
               << "...\n";
-    ov::AnyMap pipeline_config = {{"NPUW_CACHE_DIR", ".npucache"}};
+    ov::AnyMap pipeline_config;
+    if (device == "NPU") {
+        pipeline_config["NPUW_CACHE_DIR"] = ".npucache";
+	}
     ov::genai::WhisperPipeline pipeline(models_path, device, pipeline_config);
     auto pipelineInitTime = std::chrono::high_resolution_clock::now();
 
