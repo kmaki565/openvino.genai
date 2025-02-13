@@ -3,6 +3,7 @@
 
 #include "audio_utils.hpp"
 #include "openvino/genai/whisper_pipeline.hpp"
+#include "GenWave.h"
 #define NOMINMAX
 #include <Windows.h>
 
@@ -51,11 +52,16 @@ int main(int argc, char* argv[]) try {
 
     // Set console code page to UTF-8 so console known how to interpret string data
     SetConsoleOutputCP(CP_UTF8);
-    
+   
     std::string device = argv[1];  // GPU, CPU can be used as well
     std::filesystem::path models_path = argv[2];
-    std::string wav_file_path = argv[3];
+    std::string wav_file_path = PrepareWave(argv[3]);
+    bool isInputWave = wav_file_path == argv[3];
 
+    if (wav_file_path.empty()) {
+		throw std::runtime_error("Failed to convert the input file to a wave file.");
+	}
+ 
     auto startTime = std::chrono::high_resolution_clock::now();
     std::cout << FormatCurrentTime() << " Creating pipeline on " << device << " with models from " << models_path
               << "...\n";
@@ -143,6 +149,12 @@ int main(int argc, char* argv[]) try {
               << speech_duration_sec * 1000.0 /
                      std::chrono::duration_cast<std::chrono::milliseconds>(endTime - pipelineInitTime).count()
               << " audio seconds/s\n";
+
+    if (!isInputWave) {
+		std::cout << "Deleting the temporary wave file...\n";
+		DeleteWave(wav_file_path);
+	}
+
     return EXIT_SUCCESS;
 
 } catch (const std::exception& error) {
