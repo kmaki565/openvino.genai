@@ -56,7 +56,7 @@ int wmain(int argc, wchar_t* argv[]) try {
         throw std::runtime_error(std::string{"Usage: "} + params[0] + " <CPU/GPU/NPU> <MODEL_DIR> \"<WAV_FILE_PATH>\"");
     }
 
-    // Set console code page to UTF-8 so console known how to interpret string data
+    // Set console code page to UTF-8 so console can know how to interpret string data
     SetConsoleOutputCP(CP_UTF8);
    
     std::string device = params[1];  // GPU, CPU can be used as well
@@ -90,6 +90,21 @@ int wmain(int argc, wchar_t* argv[]) try {
     std::cout << FormatCurrentTime() << " Reading audio file " << wav_file_path << "...\n";
     ov::genai::RawSpeechInput raw_speech = utils::audio::read_wav(wav_file_path);
     int speech_duration_sec = raw_speech.size() / 16000;
+
+    std::filesystem::path inputPath(params_w[3]);
+    std::filesystem::path pathWithoutExtension = inputPath.parent_path() / inputPath.stem();
+    //TODO: Use temp file
+    std::wstring outputFileName(pathWithoutExtension.wstring() + L".vtt");
+    std::cout << "Output file: " << wstring_to_string(outputFileName) << std::endl;
+    HANDLE vttFile = CreateFileW(outputFileName.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (vttFile == INVALID_HANDLE_VALUE) {
+		throw std::runtime_error("Failed to create the output file.");
+	}
+    // Write UTF-8 BOM
+    DWORD dwBytesWritten = 0;
+    WriteFile(vttFile, "\xEF\xBB\xBF", 3, &dwBytesWritten, NULL);
+    char vttHeader[] = "WEBVTT\r\n\r\n";
+    WriteFile(vttFile, vttHeader, sizeof(vttHeader) - 1, &dwBytesWritten, NULL);
 
     std::cout << FormatCurrentTime() << " Generating text from speech...\n";
 
@@ -126,13 +141,18 @@ int wmain(int argc, wchar_t* argv[]) try {
                 endOfChunksInSec += 0.2f;
                 break;
 			}
-            std::cout << FormatTime(elapsedTime + chunk.start_ts) << " --> " << FormatTime(elapsedTime + chunk.end_ts)
-                      << "\n";
+            std::string vttTime = FormatTime(elapsedTime + chunk.start_ts) + " --> " + FormatTime(elapsedTime + chunk.end_ts) + "\r\n";
+            std::cout << vttTime;
+            WriteFile(vttFile, vttTime.c_str(), vttTime.size(), &dwBytesWritten, NULL);
+
             if (chunk.end_ts > endOfChunksInSec) {
                 endOfChunksInSec = chunk.end_ts;
             }
             ltrim(chunk.text);
-            std::cout << chunk.text << "\n\n";
+            std::string vttText = chunk.text + "\r\n\r\n";
+            std::cout << vttText;
+            WriteFile(vttFile, vttText.c_str(), vttText.size(), &dwBytesWritten, NULL);
+
             if (isAbnormalResult) {
                 // Ignore the rest of the chunks if they all have the same text.
 				break;
@@ -145,6 +165,7 @@ int wmain(int argc, wchar_t* argv[]) try {
         elapsedTime += endOfChunksInSec;
         // std::cout << "elapsedTime: " << elapsedTime << "\n";
     }
+    CloseHandle(vttFile);
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
     auto endTime = std::chrono::high_resolution_clock::now();
     std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count() << " seconds "
