@@ -45,18 +45,24 @@ inline static void ltrim(std::string& s) {
             }));
 }
 
-int main(int argc, char* argv[]) try {
-    if (4 > argc) {
-        throw std::runtime_error(std::string{"Usage: "} + argv[0] + " <CPU/GPU/NPU> <MODEL_DIR> \"<WAV_FILE_PATH>\"");
+int wmain(int argc, wchar_t* argv[]) try {
+    std::vector<std::wstring> params_w(argv, argv + argc);
+
+    // Make a copy of params_w with std::string elements
+    std::vector<std::string> params(params_w.size());
+    std::transform(params_w.begin(), params_w.end(), params.begin(), wstring_to_string);
+
+    if (4 > params.size()) {
+        throw std::runtime_error(std::string{"Usage: "} + params[0] + " <CPU/GPU/NPU> <MODEL_DIR> \"<WAV_FILE_PATH>\"");
     }
 
     // Set console code page to UTF-8 so console known how to interpret string data
     SetConsoleOutputCP(CP_UTF8);
    
-    std::string device = argv[1];  // GPU, CPU can be used as well
-    std::filesystem::path models_path = argv[2];
-    std::string wav_file_path = PrepareWave(argv[3]);
-    bool isInputWave = wav_file_path == argv[3];
+    std::string device = params[1];  // GPU, CPU can be used as well
+    std::filesystem::path models_path = params[2];
+    std::string wav_file_path = PrepareWave(params_w[3]);
+    bool isInputWave = wav_file_path == params[3];
 
     if (wav_file_path.empty()) {
 		throw std::runtime_error("Failed to convert the input file to a wave file.");

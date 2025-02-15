@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
 
-std::string PrepareWave(const std::string& inputFile);
+std::string wstring_to_string(const std::wstring& wstr);
+std::string PrepareWave(const std::wstring& inputFile);
 void DeleteWave(const std::string& waveFile);
