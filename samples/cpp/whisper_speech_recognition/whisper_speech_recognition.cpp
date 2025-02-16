@@ -92,11 +92,12 @@ int wmain(int argc, wchar_t* argv[]) try {
     int speech_duration_sec = raw_speech.size() / 16000;
 
     std::filesystem::path inputPath(params_w[3]);
-    std::filesystem::path pathWithoutExtension = inputPath.parent_path() / inputPath.stem();
-    //TODO: Use temp file
-    std::wstring outputFileName(pathWithoutExtension.wstring() + L".vtt");
-    std::cout << "Output file: " << wstring_to_string(outputFileName) << std::endl;
-    HANDLE vttFile = CreateFileW(outputFileName.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    std::filesystem::path appTempPath(GetAppTempDir());
+
+    std::wstring tempVttFile = (appTempPath / inputPath.stem()).wstring() + L".vtt";
+
+    std::cout << "Temp VTT file to write: " << wstring_to_string(tempVttFile) << std::endl;
+    HANDLE vttFile = CreateFileW(tempVttFile.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (vttFile == INVALID_HANDLE_VALUE) {
 		throw std::runtime_error("Failed to create the output file.");
 	}
@@ -167,6 +168,11 @@ int wmain(int argc, wchar_t* argv[]) try {
     }
     CloseHandle(vttFile);
     std::cout << FormatCurrentTime() << " Transcribing done.\n";
+
+    std::wstring outputFileName((inputPath.parent_path() / inputPath.stem()).wstring() + L".vtt");  // Result file name
+    std::cout << "Move result to " << wstring_to_string(outputFileName) << std::endl;
+    MoveFileExW(tempVttFile.c_str(), outputFileName.c_str(), MOVEFILE_REPLACE_EXISTING);
+
     auto endTime = std::chrono::high_resolution_clock::now();
     std::cout << "Total processing time: " << std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count() << " seconds "
               << "(including pipeline init time: " << std::chrono::duration_cast<std::chrono::seconds>(pipelineInitTime - startTime).count() << "s)\n";

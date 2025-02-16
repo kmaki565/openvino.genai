@@ -9,6 +9,21 @@ std::string wstring_to_string(const std::wstring& wstr) {
     return str;
 }
 
+std::wstring GetAppTempDir() {
+	wchar_t tempPath[MAX_PATH] = {};
+	GetTempPathW(MAX_PATH, tempPath);
+
+	wchar_t appTempDir[MAX_PATH] = {};
+	_snwprintf_s(appTempDir, MAX_PATH, L"%s%s", tempPath, L"WhisperOv");
+
+    // Create the app temp folder if not exists
+	if (GetFileAttributesW(appTempDir) == INVALID_FILE_ATTRIBUTES) {
+		CreateDirectoryW(appTempDir, NULL);
+	}
+
+	return std::wstring(appTempDir);
+}
+
 // Convert the input file to a wave file. If failed, return an empty string.
 std::string PrepareWave(const std::wstring& inputFile) {
     std::filesystem::path inputPath(inputFile);
@@ -21,17 +36,6 @@ std::string PrepareWave(const std::wstring& inputFile) {
     if (inputPath.extension() == ".wav")
         return wstring_to_string(inputFile);
 
-    // Create a temp folder
-    wchar_t tempPath[MAX_PATH] = {};
-    GetTempPathW(MAX_PATH, tempPath);
-
-    wchar_t appTempPath[MAX_PATH] = {};
-    _snwprintf_s(appTempPath, MAX_PATH, L"%s%s", tempPath, L"WhisperOv");
-
-    if (GetFileAttributesW(appTempPath) == INVALID_FILE_ATTRIBUTES) {
-		CreateDirectoryW(appTempPath, NULL);
-	}
-
     // Create random file name
     GUID guid;
     CoCreateGuid(&guid);
@@ -40,7 +44,7 @@ std::string PrepareWave(const std::wstring& inputFile) {
 
     // Convert the input file to a wave file
 	wchar_t wavePath[MAX_PATH] = {};
-	_snwprintf_s(wavePath, MAX_PATH, L"%s\\%s.wav", appTempPath, guidWstr);
+    _snwprintf_s(wavePath, MAX_PATH, L"%s\\%s.wav", GetAppTempDir().c_str(), guidWstr);
 
 	wchar_t commandLine[MAX_PATH * 2] = {};
 	_snwprintf_s(commandLine, MAX_PATH * 2, L"ffmpeg.exe -y -i \"%s\" -ar 16000 -ac 1 \"%s\"", inputFile.c_str(), wavePath);
